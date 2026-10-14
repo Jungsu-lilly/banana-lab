@@ -1,0 +1,15 @@
+{
+  "isSample": true,
+  "source": "예시 값 (2일차에 FAOSTAT 공식 통계로 교체)",
+  "unit": "만 톤",
+  "year": 2022,
+  "countries": [
+    { "name": "인도", "amount": 3450 },
+    { "name": "중국", "amount": 1170 },
+    { "name": "인도네시아", "amount": 920 },
+    { "name": "브라질", "amount": 690 },
+    { "name": "에콰도르", "amount": 610 },
+    { "name": "필리핀", "amount": 590 },
+    { "name": "과테말라", "amount": 480 }
+  ]
+}

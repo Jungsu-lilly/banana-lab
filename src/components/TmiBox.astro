@@ -1,0 +1,65 @@
+---
+// 바나나 TMI 뽑기.
+// define:vars 로 빌드 시점의 데이터(facts)를 브라우저 스크립트에 넘겨요.
+import facts from '../data/facts.json';
+import Kangaroo from './Kangaroo.astro';
+
+const first = facts[0];
+---
+
+<div class="tmi">
+  <div class="tmi-stage">
+    <Kangaroo size={150} class="tmi-roo" />
+    <figure class="bubble" aria-live="polite">
+      <blockquote id="tmi-text">{first}</blockquote>
+      <figcaption>캥거루 대리의 바나나 TMI <span class="num" id="tmi-count">1</span>/<span class="num">{facts.length}</span></figcaption>
+    </figure>
+  </div>
+  <button id="tmi-next" class="tmi-btn" type="button">TMI 하나 더</button>
+</div>
+
+<script is:inline define:vars={{ facts }}>
+  (function () {
+    const text = document.getElementById('tmi-text');
+    const count = document.getElementById('tmi-count');
+    const btn = document.getElementById('tmi-next');
+    let i = 0;
+    btn.addEventListener('click', function () {
+      i = (i + 1) % facts.length;
+      text.textContent = facts[i];
+      count.textContent = String(i + 1);
+    });
+  })();
+</script>
+
+<style>
+  .tmi { display: grid; gap: 16px; justify-items: start; }
+  .tmi-stage { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .tmi-stage :global(.tmi-roo) { flex: none; width: 120px; }
+  .bubble {
+    position: relative;
+    flex: 1 1 260px;
+    min-width: 0;
+    margin: 0 0 40px;
+    padding: 18px 20px;
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: 18px 18px 18px 4px;
+    display: grid;
+    gap: 8px;
+  }
+  .bubble blockquote { margin: 0; font-size: var(--step-1); line-height: 1.5; font-weight: 700; max-width: 40ch; }
+  .bubble figcaption { font-size: var(--step--1); color: var(--muted); }
+  .tmi-btn {
+    padding: 12px 22px;
+    background: var(--peel);
+    color: var(--on-peel);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    font-weight: 700;
+    box-shadow: 3px 3px 0 var(--ink);
+    transition: transform 0.12s, box-shadow 0.12s;
+  }
+  .tmi-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+  .tmi-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+</style>

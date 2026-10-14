@@ -1,0 +1,133 @@
+/* 레이아웃 콘셉트: 청과 상자에 붙은 가격 스티커 + 연구소 관찰 노트.
+   노란 바나나 색은 강조할 곳에만 아껴 쓰고, 나머지는 종이와 잉크 톤으로 차분하게. */
+:root {
+  --paper: #f7f7ee;      /* 배경: 덜 익은 바나나 속살 느낌의 연한 종이 */
+  --card: #ffffff;
+  --ink: #2b2417;        /* 글자: 바나나 멍든 갈색 */
+  --muted: #6b6450;
+  --line: #e2dfca;
+  --peel: #f5c518;       /* 강조: 잘 익은 바나나 */
+  --peel-soft: #fbe9a3;
+  --on-peel: #2b2417;    /* 노란 바탕 위 글자는 테마와 상관없이 진하게 */
+  --stem: #3f7d3a;       /* 보조: 바나나 꼭지 초록 */
+  --roo: #b9783f;        /* 캥거루 털 */
+  --roo-light: #ecc9a2;
+
+  --font-display: 'Black Han Sans', 'Gothic A1', 'Apple SD Gothic Neo', sans-serif;
+  --font-body: 'Gothic A1', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --step--1: 0.8125rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.75rem;
+  --step-3: clamp(2.25rem, 6vw, 3.5rem);
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #16140e;
+    --card: #211e15;
+    --ink: #f3eedc;
+    --muted: #b3ab92;
+    --line: #36321f;
+    --peel: #f5c518;
+    --peel-soft: #4a3f12;
+    --stem: #7cc46f;
+    --roo: #cf9159;
+    --roo-light: #e6bf94;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #16140e;
+  --card: #211e15;
+  --ink: #f3eedc;
+  --muted: #b3ab92;
+  --line: #36321f;
+  --peel: #f5c518;
+  --peel-soft: #4a3f12;
+  --stem: #7cc46f;
+  --roo: #cf9159;
+  --roo-light: #e6bf94;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.65;
+}
+
+.wrap {
+  max-width: 1040px;
+  margin-inline: auto;
+  padding-inline: 20px;
+  padding-block: 0 64px;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.15;
+  text-wrap: balance;
+  margin: 0;
+}
+h2 { font-size: var(--step-2); }
+h3 { font-size: var(--step-1); }
+p { margin: 0; max-width: 62ch; }
+
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.eyebrow {
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--stem);
+}
+
+.sample-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px dashed var(--muted);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.section {
+  display: grid;
+  gap: 20px;
+  padding-block: 48px 0;
+  scroll-margin-top: 64px; /* 메뉴 눌러 이동할 때 상단 고정 메뉴에 제목이 가리지 않게 */
+}
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.section-head > div { display: grid; gap: 6px; min-width: 0; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 3px solid var(--stem);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

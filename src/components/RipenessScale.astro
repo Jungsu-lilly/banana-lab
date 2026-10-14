@@ -1,0 +1,52 @@
+---
+// 바나나 숙성도 1~7단계 (청과 업계에서 실제로 쓰는 껍질 색 기준)
+interface Props {
+  stage: number;
+}
+const { stage } = Astro.props;
+const stages = [1, 2, 3, 4, 5, 6, 7];
+---
+
+<div class="ripe">
+  <span class="ripe-label">오늘 연구소 숙성도</span>
+  <ol class="ripe-scale" aria-label={`7단계 중 ${stage}단계`}>
+    {stages.map((s) => (
+      <li class={`s s${s} ${s === stage ? 'on' : ''}`}>
+        <span class="num">{s}</span>
+      </li>
+    ))}
+  </ol>
+  <span class="ripe-now">{stage}단계 · 지금 먹기 딱 좋음</span>
+</div>
+
+<style>
+  .ripe { display: grid; gap: 6px; }
+  .ripe-label { font-size: var(--step--1); font-weight: 700; color: var(--muted); }
+  .ripe-scale { display: flex; gap: 4px; list-style: none; padding: 0; margin: 0; }
+  .s {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 30px;
+    border-radius: 6px;
+    border: 2px solid var(--ink);
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    color: #2b2417;
+    opacity: 0.55;
+  }
+  .s.on { opacity: 1; transform: translateY(-3px); box-shadow: 0 3px 0 var(--ink); }
+  .s1 { background: #4f8f3a; color: #ffffff; }
+  .s2 { background: #7fae46; }
+  .s3 { background: #b6c84c; }
+  .s4 { background: #dccf45; }
+  .s5 { background: #f0cf2e; }
+  .s6 { background: #f5c518; }
+  .s7 {
+    background:
+      radial-gradient(circle at 30% 40%, #6b4a1f 0 2.5px, transparent 3px),
+      radial-gradient(circle at 70% 65%, #6b4a1f 0 2px, transparent 2.5px),
+      #f5c518;
+  }
+  .ripe-now { font-size: var(--step--1); font-weight: 700; }
+</style>

@@ -1,0 +1,12 @@
+# Cloudflare Pages 설정
+# 랭킹 저장용 D1(SQLite) 데이터베이스를 DB라는 이름으로 연결해요.
+name = "banana-lab"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-06-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "banana-lab"
+# `npx wrangler d1 create banana-lab` 실행 후 나오는 database_id로 바꿔주세요.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

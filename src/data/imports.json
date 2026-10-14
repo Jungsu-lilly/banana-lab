@@ -1,0 +1,12 @@
+{
+  "isSample": true,
+  "source": "예시 비율 (2일차에 관세청 수출입무역통계로 교체)",
+  "unit": "%",
+  "origins": [
+    { "name": "필리핀", "share": 72 },
+    { "name": "에콰도르", "share": 11 },
+    { "name": "베트남", "share": 8 },
+    { "name": "과테말라", "share": 5 },
+    { "name": "기타", "share": 4 }
+  ]
+}

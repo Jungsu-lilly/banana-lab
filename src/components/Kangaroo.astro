@@ -1,0 +1,67 @@
+---
+// 캥거루 대리 캐릭터 (직접 그린 SVG라 저작권 걱정 없음)
+// Props로 크기와 추가 class를 받아요. 예: <Kangaroo size={240} />
+interface Props {
+  size?: number;
+  class?: string;
+}
+const { size = 220, class: className = '' } = Astro.props;
+---
+
+<svg
+  class={`roo ${className}`}
+  width={size}
+  height={Math.round(size * 1.09)}
+  viewBox="0 0 220 240"
+  role="img"
+  aria-label="넥타이를 매고 바나나를 든 캥거루 대리"
+>
+  <g stroke="var(--ink)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <!-- 꼬리 -->
+    <path d="M150 192 C185 200 204 214 212 232 C192 230 168 218 142 206 Z" fill="var(--roo)" />
+    <!-- 발 -->
+    <ellipse cx="94" cy="223" rx="30" ry="9" fill="var(--roo)" />
+    <ellipse cx="142" cy="223" rx="28" ry="9" fill="var(--roo)" />
+    <!-- 몸통과 배 -->
+    <ellipse cx="120" cy="160" rx="48" ry="60" fill="var(--roo)" />
+    <ellipse cx="114" cy="174" rx="29" ry="36" fill="var(--roo-light)" />
+    <path d="M90 176 Q114 194 138 176" fill="none" />
+    <!-- 넥타이 -->
+    <path d="M114 110 h12 l-3 7 l6 24 l-9 10 l-9 -10 l6 -24 z" fill="var(--stem)" />
+    <!-- 사원증 -->
+    <rect x="132" y="142" width="30" height="18" rx="3" fill="var(--card)" />
+    <!-- 귀 -->
+    <path d="M90 56 L78 12 L106 46 Z" fill="var(--roo)" />
+    <path d="M112 50 L124 10 L130 50 Z" fill="var(--roo)" />
+    <path d="M90 46 L84 24 L99 42 Z" fill="var(--roo-light)" stroke="none" />
+    <path d="M116 44 L122 24 L125 44 Z" fill="var(--roo-light)" stroke="none" />
+    <!-- 머리, 주둥이 -->
+    <ellipse cx="102" cy="78" rx="35" ry="31" fill="var(--roo)" />
+    <ellipse cx="72" cy="90" rx="22" ry="15" fill="var(--roo-light)" />
+    <!-- 왕관: 평소엔 숨겨두고, 어제 TOP3가 오면 보여줘요 -->
+    <path class="crown" d="M88 54 L90 34 L98 44 L104 28 L110 44 L118 34 L120 54 Z" fill="var(--crown, #f5c518)" />
+    <!-- 팔 (바나나를 든 쪽) -->
+    <path d="M100 120 C84 128 74 136 68 144" fill="none" stroke="var(--ink)" stroke-width="16" />
+    <path d="M100 120 C84 128 74 136 68 144" fill="none" stroke="var(--roo)" stroke-width="10" />
+    <!-- 바나나 -->
+    <path d="M36 116 C42 148 74 160 100 148 C80 146 58 138 48 114 Z" fill="var(--peel)" />
+    <path d="M36 116 l-5 -9" stroke="var(--stem)" stroke-width="4" />
+    <circle cx="70" cy="146" r="8" fill="var(--roo)" />
+  </g>
+  <!-- 얼굴 (테두리 없음) -->
+  <ellipse cx="54" cy="85" rx="6" ry="4.5" fill="var(--ink)" />
+  <ellipse cx="98" cy="74" rx="5" ry="5.5" fill="var(--ink)" />
+  <circle cx="99.5" cy="72" r="1.6" fill="#ffffff" />
+  <!-- 반쯤 감긴 눈꺼풀: 월요일 아침 대리님 -->
+  <path d="M91 71 Q98 66 105 71 L105 68 Q98 63 91 68 Z" fill="var(--roo)" />
+  <path d="M90 70 L106 71" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M60 99 Q67 103 75 99" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round" />
+  <ellipse cx="86" cy="94" rx="6" ry="3.5" fill="#f2a7a0" opacity="0.75" />
+  <text x="147" y="155" text-anchor="middle" font-size="9" font-weight="700" fill="var(--ink)" font-family="var(--font-body)">대리</text>
+</svg>
+
+<style>
+  .roo { display: block; max-width: 100%; height: auto; overflow: visible; }
+  .roo :global(.crown) { display: none; }
+  :global([data-vip]) .roo :global(.crown) { display: inline; }
+</style>

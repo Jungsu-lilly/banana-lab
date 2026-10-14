@@ -1,0 +1,55 @@
+# 매일 바나나 시세(와 수입 통계)를 받아서, 바뀐 게 있으면 커밋해요.
+# 커밋이 main에 올라가면 Cloudflare Pages가 알아서 다시 빌드·배포해요.
+name: Update banana data
+
+on:
+  schedule:
+    - cron: '0 9 * * 1-5' # 평일 18:00 KST (UTC 09:00). KAMIS 당일 소매가 집계가 끝난 뒤
+  workflow_dispatch: {} # Actions 탭에서 수동 실행 버튼
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # secrets는 if 조건에 바로 못 써서, 키가 있는지만 따로 표시해요.
+      HAS_DATA_KEY: ${{ secrets.DATA_GO_KR_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 데이터 스크립트는 외부 패키지를 안 써서 npm install이 필요 없어요.
+      - name: 바나나 시세 (KAMIS)
+        env:
+          KAMIS_CERT_KEY: ${{ secrets.KAMIS_CERT_KEY }}
+          KAMIS_CERT_ID: ${{ secrets.KAMIS_CERT_ID }}
+        run: node scripts/fetch-price.mjs
+
+      - name: 수입 원산지 (관세청)
+        if: env.HAS_DATA_KEY == 'true'
+        continue-on-error: true # 실패해도 시세 커밋은 진행
+        env:
+          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+        run: node scripts/fetch-imports.mjs
+
+      - name: 바뀐 데이터 커밋
+        run: |
+          if git diff --quiet -- src/data; then
+            echo "바뀐 데이터 없음"
+            exit 0
+          fi
+          git config user.name "banana-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data
+          git commit -m "data: 바나나 데이터 갱신 $(TZ=Asia/Seoul date +%F)"
+          git push

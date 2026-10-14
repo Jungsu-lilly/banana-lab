@@ -1,0 +1,32 @@
+---
+// 레이아웃: 모든 페이지가 공통으로 쓰는 <html>, <head> 뼈대예요.
+// 페이지에서 <BaseLayout title="..."> 로 감싸면, 그 안의 내용이 <slot /> 자리에 들어가요.
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = '캥거루 대리가 운영하는 바나나 시세, 원산지, 브랜드, TMI 연구소' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap"
+    />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

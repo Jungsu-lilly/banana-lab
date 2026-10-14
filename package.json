@@ -1,0 +1,26 @@
+{
+  "name": "banana-lab",
+  "type": "module",
+  "version": "0.3.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "data:price": "node --env-file-if-exists=.env scripts/fetch-price.mjs",
+    "data:imports": "node --env-file-if-exists=.env scripts/fetch-imports.mjs",
+    "data:faostat": "node scripts/import-faostat.mjs data/raw/faostat.csv",
+    "dev:full": "astro build && wrangler pages dev",
+    "db:migrate:local": "wrangler d1 migrations apply banana-lab --local",
+    "db:migrate:remote": "wrangler d1 migrations apply banana-lab --remote"
+  },
+  "dependencies": {
+    "astro": "^7.3.8"
+  },
+  "devDependencies": {
+    "wrangler": "^4.149.0"
+  }
+}

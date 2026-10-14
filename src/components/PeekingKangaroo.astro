@@ -1,0 +1,74 @@
+---
+// 이스터에그: 가끔 화면 오른쪽 아래에서 캥거루 대리가 고개를 내밀어요.
+// 누르면 바나나를 줄 수 있어요.
+import Kangaroo from './Kangaroo.astro';
+---
+
+<button id="peek" class="peek" type="button" aria-label="캥거루 대리에게 바나나 주기" tabindex="-1">
+  <span class="peek-bubble" id="peek-bubble">바나나 내놔…</span>
+  <Kangaroo size={120} />
+</button>
+
+<script is:inline>
+  (function () {
+    const peek = document.getElementById('peek');
+    const bubble = document.getElementById('peek-bubble');
+    if (!peek) return;
+    const lines = ['바나나 내놔…', '오늘 시세 봤어요?', '회의 끝나면 바나나', '그거 필리핀산이에요?', '퇴근하고 바나나 한 손'];
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function show() {
+      bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
+      peek.classList.add('out');
+      peek.tabIndex = 0;
+      setTimeout(hide, 4500);
+    }
+    function hide() {
+      peek.classList.remove('out');
+      peek.tabIndex = -1;
+      schedule();
+    }
+    function schedule() {
+      setTimeout(show, 12000 + Math.random() * 18000);
+    }
+    peek.addEventListener('click', function () {
+      bubble.textContent = '감사합니다 (꿀꺽)';
+      document.dispatchEvent(new CustomEvent('feed-roo'));
+    });
+    if (!reduce) setTimeout(show, 6000);
+  })();
+</script>
+
+<style>
+  .peek {
+    position: fixed;
+    right: 16px;
+    bottom: 0;
+    z-index: 20;
+    padding: 0;
+    background: none;
+    border: 0;
+    visibility: hidden;
+    transform: translateY(110%) rotate(-8deg);
+    transform-origin: bottom center;
+    transition: transform 0.45s cubic-bezier(.3, 1.5, .5, 1), visibility 0s linear 0.45s;
+  }
+  .peek.out {
+    visibility: visible;
+    transform: translateY(42%) rotate(-8deg);
+    transition: transform 0.45s cubic-bezier(.3, 1.5, .5, 1), visibility 0s;
+  }
+  .peek-bubble {
+    position: absolute;
+    right: 90px;
+    top: 18px;
+    padding: 6px 12px;
+    white-space: nowrap;
+    background: var(--card);
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    border-radius: 12px 12px 2px 12px;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+</style>

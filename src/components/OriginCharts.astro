@@ -1,0 +1,86 @@
+---
+// 세계 생산량 막대그래프 + 한국 수입 원산지 비율 막대.
+// 차트 라이브러리 없이 CSS 너비(%)만으로 그려요. 데이터가 적을 땐 이게 제일 가벼워요.
+import production from '../data/production.json';
+import imports from '../data/imports.json';
+
+const max = Math.max(...production.countries.map((c) => c.amount));
+const shareColors = ['var(--peel)', 'var(--stem)', 'var(--roo)', 'var(--roo-light)', 'var(--line)'];
+---
+
+<div class="origin-grid">
+  <article class="panel">
+    <div class="panel-head">
+      <h3>세계 바나나 생산 TOP 7</h3>
+      {production.isSample && <span class="sample-badge">예시 값</span>}
+    </div>
+    <p class="panel-sub">{production.year}년 기준 · 단위 {production.unit}</p>
+    <ol class="bars">
+      {production.countries.map((c) => (
+        <li class="bar-row">
+          <span class="bar-name">{c.name}</span>
+          <span class="bar-track">
+            <span class="bar-fill" style={`width:${(c.amount / max) * 100}%`}></span>
+          </span>
+          <span class="num bar-val">{c.amount.toLocaleString('ko-KR')}</span>
+        </li>
+      ))}
+    </ol>
+    <p class="panel-note">인도가 압도적 1위지만 대부분 자국에서 먹어요. 수출 강국은 에콰도르와 필리핀이에요.</p>
+  </article>
+
+  <article class="panel">
+    <div class="panel-head">
+      <h3>우리 집 바나나는 어디서 왔나</h3>
+      {imports.isSample && <span class="sample-badge">예시 비율</span>}
+    </div>
+    <p class="panel-sub">한국 바나나 수입 원산지 비중 · 단위 {imports.unit}</p>
+    <div class="stack" role="img" aria-label={imports.origins.map((o) => `${o.name} ${o.share}%`).join(', ')}>
+      {imports.origins.map((o, i) => (
+        <span class="stack-seg" style={`width:${o.share}%;background:${shareColors[i]}`}></span>
+      ))}
+    </div>
+    <ul class="legend">
+      {imports.origins.map((o, i) => (
+        <li>
+          <span class="swatch" style={`background:${shareColors[i]}`}></span>
+          <span>{o.name}</span>
+          <span class="num">{o.share}%</span>
+        </li>
+      ))}
+    </ul>
+    <p class="panel-note">마트 바나나 스티커를 보면 대부분 필리핀산이에요. 캥거루 대리도 필리핀파예요.</p>
+  </article>
+</div>
+
+<style>
+  .origin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; }
+  .panel {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+    padding: 20px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    min-width: 0;
+  }
+  .panel-head { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+  .panel-sub { font-size: var(--step--1); color: var(--muted); }
+  .panel-note { font-size: var(--step--1); color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; }
+
+  .bars { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .bar-row { display: grid; grid-template-columns: 5.5em 1fr 3.5em; align-items: center; gap: 10px; font-size: 0.9375rem; }
+  .bar-track { height: 14px; background: var(--paper); border-radius: 999px; overflow: hidden; }
+  .bar-fill { display: block; height: 100%; background: var(--peel); border-right: 2px solid var(--ink); border-radius: 999px; }
+  .bar-row:first-child .bar-fill { background: var(--stem); }
+  .bar-val { text-align: right; font-size: 0.875rem; }
+
+  .stack { display: flex; height: 28px; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; }
+  .stack-seg { display: block; height: 100%; }
+  .stack-seg + .stack-seg { border-left: 2px solid var(--ink); }
+  .legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5em, 1fr)); gap: 6px 14px; font-size: 0.9375rem; }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .legend .num { margin-left: auto; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--ink); flex: none; }
+</style>

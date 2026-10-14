@@ -1,0 +1,487 @@
+---
+// 오늘의 바나나 랭킹 + 어제의 명예의 전당 + TOP3 재방문 기믹
+// 서버(/api)가 없으면(로컬 astro dev, 미리보기) 자동으로 데모 모드로 바뀌어요.
+---
+
+<div class="rank-grid">
+  <article class="board">
+    <div class="board-head">
+      <h3>오늘의 바나나 랭킹</h3>
+      <span class="sample-badge" id="rank-mode" hidden>예시 랭킹</span>
+    </div>
+    <p class="board-sub">자정(한국 시간)에 초기화돼요. 같은 개수면 먼저 도달한 사람이 위예요.</p>
+    <ol class="rank-list" id="rank-list" aria-live="polite">
+      <li class="rank-empty">불러오는 중…</li>
+    </ol>
+  </article>
+
+  <aside class="hall">
+    <h3>어제의 명예의 전당</h3>
+    <p class="board-sub">어제 TOP3는 오늘 접속하면 특별 대접을 받아요.</p>
+    <ol class="hall-list" id="hall-list">
+      <li class="rank-empty">아직 기록이 없어요.</li>
+    </ol>
+    <button id="vip-demo" class="ghost-btn" type="button" hidden>어제 1위였다면? 미리보기</button>
+  </aside>
+</div>
+
+<!-- TOP3 재방문 배너 -->
+<div class="vip-banner" id="vip-banner" role="status" hidden>
+  <svg class="vip-crown" viewBox="0 0 40 28" aria-hidden="true">
+    <path d="M2 26 L4 6 L12 15 L20 2 L28 15 L36 6 L38 26 Z" fill="var(--crown, #f5c518)" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round"></path>
+  </svg>
+  <p id="vip-text"></p>
+  <button id="vip-close" class="vip-close" type="button" aria-label="배너 닫기">닫기</button>
+</div>
+<div class="banana-rain" id="banana-rain" aria-hidden="true"></div>
+
+<script is:inline>
+  (function () {
+    var API = '/api';
+    var LS = {
+      get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+      set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+      del: function (k) { try { localStorage.removeItem(k); } catch (e) {} },
+    };
+    var $ = function (id) { return document.getElementById(id); };
+    var state = { id: null, name: null, count: 0, rank: null, prevRank: null, pending: 0, demo: false, inflight: false, timer: null, lastRefresh: 0, raining: false };
+
+    // 오늘 TOP3: 접속할 때, 그리고 TOP3 안에서 순위가 오를 때 바나나 비
+    var TODAY = {
+      1: { rain: 36, line: '오늘 1위! 바나나 비를 내려드려요.' },
+      2: { rain: 20, line: '오늘 2위! 1위가 코앞이에요.' },
+      3: { rain: 12, line: '오늘 3위! 시상대에 올라왔어요.' },
+    };
+
+    var VIP = {
+      1: { color: '#f5c518', title: '어제의 바나나왕', line: '왕이시여, 바나나를 받으소서.', rain: 36 },
+      2: { color: '#c9ccd3', title: '어제 2위', line: '은메달도 바나나는 금색이에요.', rain: 16 },
+      3: { color: '#d08a4f', title: '어제 3위', line: '동메달 축하드려요. 바나나 하나 더 드릴게요.', rain: 0 },
+    };
+
+    // ---------- 서버 통신 ----------
+    function call(path, opts) {
+      return fetch(API + path, opts).then(function (res) {
+        var isJson = (res.headers.get('content-type') || '').indexOf('application/json') !== -1;
+        if (!isJson) throw new Error('no-api');
+        return res.json().then(function (body) { return { status: res.status, body: body }; });
+      });
+    }
+    function register() {
+      return call('/register', { method: 'POST' }).then(function (r) {
+        state.id = r.body.id; state.name = r.body.name;
+        LS.set('roo-id', state.id); LS.set('roo-name', state.name);
+      });
+    }
+    function loadRanking() {
+      state.lastRefresh = Date.now();
+      return call('/ranking?id=' + encodeURIComponent(state.id), {}).then(function (r) { return r.body; });
+    }
+
+    function init() {
+      state.id = LS.get('roo-id');
+      state.name = LS.get('roo-name');
+      var start = state.id ? Promise.resolve() : register();
+      start
+        .then(loadRanking)
+        .then(function (data) {
+          if (!data.me) { // DB가 초기화된 경우 다시 등록
+            LS.del('roo-id');
+            return register().then(loadRanking);
+          }
+          return data;
+        })
+        .then(function (data) {
+          var y = data.me && data.me.yesterdayRank;
+          var vipRained = false;
+          if (y && y <= 3) vipRained = showVip(y, data.me.name, data.me.yesterdayCount, true);
+          if (vipRained) state.prevRank = data.me.rank; // 어제 기믹 비가 내렸으면 오늘 비는 다음 순위 상승 때
+          applyServer(data);
+          setInterval(function () { if (!document.hidden) refresh(); }, 20000);
+        })
+        .catch(startDemo);
+    }
+
+    function refresh() {
+      if (state.demo) return;
+      var wait = 3000 - (Date.now() - state.lastRefresh);
+      if (wait > 0) { // 너무 자주 부르지 않게, 대신 잠시 뒤에 한 번은 꼭 갱신
+        if (!state.refreshTimer) state.refreshTimer = setTimeout(function () { state.refreshTimer = null; refresh(); }, wait);
+        return;
+      }
+      loadRanking().then(applyServer).catch(function () {});
+    }
+
+    function applyServer(data) {
+      state.name = data.me.name;
+      state.count = data.me.count + state.pending;
+      state.rank = data.me.rank;
+      renderMe();
+      renderList(data.top, data.me);
+      renderHall(data.hall);
+      checkToday(state.rank);
+    }
+
+    // 처음 확인했을 때 TOP3이거나, TOP3 안에서 더 높은 순위가 되면 축하
+    function checkToday(rank) {
+      var prev = state.prevRank;
+      state.prevRank = rank;
+      if (!rank || rank > 3) return;
+      if (prev === undefined || prev === null || rank < prev) celebrate(rank);
+    }
+    function celebrate(rank) {
+      var t = TODAY[rank];
+      var bubble = $('hero-bubble');
+      if (bubble) {
+        bubble.textContent = t.line;
+        bubble.hidden = false;
+        clearTimeout(state.bubbleTimer);
+        state.bubbleTimer = setTimeout(function () { bubble.hidden = true; }, 4500);
+      }
+      rain(t.rain);
+    }
+
+    // ---------- 바나나 주기 ----------
+    function feed() {
+      state.pending += 1;
+      state.count += 1;
+      renderMe();
+      if (state.demo) { renderDemo(); return; }
+      if (!state.timer) state.timer = setTimeout(flush, 1000);
+    }
+    function flush() {
+      state.timer = null;
+      if (state.pending === 0 || state.inflight) return;
+      var n = Math.min(state.pending, 30);
+      state.pending -= n;
+      state.inflight = true;
+      call('/feed', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: state.id, count: n }),
+      })
+        .then(function (r) {
+          state.inflight = false;
+          if (r.status === 429) { state.pending += n; return retry(800); }
+          if (r.status !== 200) { state.pending += n; return retry(3000); }
+          state.count = r.body.count + state.pending;
+          state.rank = r.body.rank;
+          renderMe();
+          checkToday(state.rank);
+          if (r.body.count >= r.body.cap) setStat('오늘 한도(' + r.body.cap + '개)를 다 드렸어요. 대리님 배불러요.');
+          if (state.pending > 0) retry(800);
+          refresh();
+        })
+        .catch(function () { state.inflight = false; state.pending += n; retry(3000); });
+    }
+    function retry(ms) { if (!state.timer) state.timer = setTimeout(flush, ms); }
+
+    // ---------- 화면 그리기 ----------
+    function setStat(text) { var el = $('my-stat'); if (el) el.textContent = text; }
+    function renderMe() {
+      var nameEl = $('my-name');
+      if (nameEl) nameEl.textContent = state.name || '…';
+      setStat('오늘 드린 바나나 ' + state.count + '개' + (state.rank ? ' · 현재 ' + state.rank + '위' : ''));
+    }
+    function row(r, isMe) {
+      var li = document.createElement('li');
+      li.className = 'rank-row' + (isMe ? ' me' : '') + (r.rank <= 3 ? ' top' + r.rank : '');
+      var badge = document.createElement('span'); badge.className = 'rank-no num'; badge.textContent = r.rank;
+      var name = document.createElement('span'); name.className = 'rank-name'; name.textContent = r.name;
+      if (isMe) { var tag = document.createElement('span'); tag.className = 'me-tag'; tag.textContent = '나'; name.appendChild(tag); }
+      var cnt = document.createElement('span'); cnt.className = 'rank-count num'; cnt.textContent = r.count.toLocaleString('ko-KR') + '개';
+      li.append(badge, name, cnt);
+      return li;
+    }
+    function renderList(top, me) {
+      var list = $('rank-list');
+      list.textContent = '';
+      if (!top.length) {
+        var e = document.createElement('li'); e.className = 'rank-empty';
+        e.textContent = '아직 아무도 바나나를 안 드렸어요. 오늘의 1위가 될 기회예요.';
+        list.appendChild(e);
+        return;
+      }
+      var meInTop = false;
+      top.forEach(function (r) {
+        var isMe = me && r.name === me.name && r.rank === me.rank;
+        if (isMe) meInTop = true;
+        list.appendChild(row(r, isMe));
+      });
+      if (me && me.rank && !meInTop) {
+        var gap = document.createElement('li'); gap.className = 'rank-gap'; gap.textContent = '⋯';
+        list.appendChild(gap);
+        list.appendChild(row({ rank: me.rank, name: me.name, count: me.count }, true));
+      }
+    }
+    function renderHall(hall) {
+      var list = $('hall-list');
+      list.textContent = '';
+      if (!hall.length) {
+        var e = document.createElement('li'); e.className = 'rank-empty'; e.textContent = '어제는 조용했어요.';
+        list.appendChild(e);
+        return;
+      }
+      hall.forEach(function (r) {
+        var li = document.createElement('li'); li.className = 'hall-row medal' + r.rank;
+        var m = document.createElement('span'); m.className = 'medal-dot num'; m.textContent = r.rank;
+        var n = document.createElement('span'); n.className = 'rank-name'; n.textContent = r.name;
+        var c = document.createElement('span'); c.className = 'rank-count num'; c.textContent = r.count.toLocaleString('ko-KR') + '개';
+        li.append(m, n, c);
+        list.appendChild(li);
+      });
+    }
+
+    // ---------- TOP3 기믹 ----------
+    function showVip(rank, name, count, oncePerDay) {
+      var v = VIP[rank];
+      var today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+      if (oncePerDay && LS.get('vip-seen') === today) {
+        document.documentElement.setAttribute('data-vip', rank); // 왕관은 계속 유지
+        document.documentElement.style.setProperty('--crown', v.color);
+        return;
+      }
+      LS.set('vip-seen', today);
+      document.documentElement.setAttribute('data-vip', rank);
+      document.documentElement.style.setProperty('--crown', v.color);
+      $('vip-text').textContent = v.title + ' ‘' + name + '’님 입장! 어제 바나나 ' + count + '개. ' + v.line;
+      $('vip-banner').hidden = false;
+      var bubble = $('hero-bubble');
+      if (bubble) { bubble.textContent = v.line; bubble.hidden = false; }
+      if (v.rain) { rain(v.rain); return true; }
+      return false;
+    }
+    // 접속 직후엔 화면이 아직 그려지는 중이거나 탭이 뒤에 있을 수 있어요.
+    // 그때 비를 내리면 사용자가 못 보고 지나가서, 페이지가 다 뜨고 실제로 보일 때까지 기다렸다가 내려요.
+    function rain(n) {
+      state.queuedRain = Math.max(state.queuedRain || 0, n);
+      if (state.waitingRain) return;
+      state.waitingRain = true;
+      whenVisible(function () {
+        state.waitingRain = false;
+        var q = state.queuedRain;
+        state.queuedRain = 0;
+        startRain(q);
+      });
+    }
+    // 앱 안의 웹뷰는 load 이벤트가 늦게 오거나 화면이 보이는데도 hidden으로 알려줄 때가 있어요.
+    // 그래서 이벤트 대신 "실제로 화면을 그리는 순간"(requestAnimationFrame)을 기준으로 해요.
+    // 화면에 안 보이면 rAF가 멈춰 있다가, 보이는 순간 실행돼요.
+    function whenVisible(fn) {
+      var done = false;
+      function go() { if (!done) { done = true; fn(); } }
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { setTimeout(go, 250); });
+      });
+      // rAF가 아예 안 도는 환경을 위한 안전장치
+      setTimeout(function () { if (document.visibilityState !== 'hidden') go(); }, 1500);
+    }
+    function startRain(n) {
+      // 이미 내리는 중이면, 더 큰 비(더 높은 순위)일 때만 새로 시작
+      if (state.raining && n <= state.rainSize) return;
+      state.raining = true;
+      state.rainSize = n;
+      clearTimeout(state.rainTimer);
+      // '동작 줄이기' 설정(저전력 모드 포함)이면 떨어지는 대신 제자리에 잠깐 뿌려요
+      var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var box = $('banana-rain');
+      box.textContent = '';
+      for (var i = 0; i < n; i++) {
+        var b = document.createElement('span');
+        b.className = still ? 'drop still' : 'drop';
+        b.style.left = Math.random() * 96 + '%';
+        b.style.setProperty('--spin', (Math.random() * 540 - 270).toFixed(0) + 'deg');
+        if (still) {
+          b.style.top = (8 + Math.random() * 80).toFixed(1) + '%';
+        } else {
+          b.style.animationDelay = (Math.random() * 1.8).toFixed(2) + 's';
+          b.style.animationDuration = (2.2 + Math.random() * 1.6).toFixed(2) + 's';
+        }
+        box.appendChild(b);
+      }
+      state.rainTimer = setTimeout(function () { box.textContent = ''; state.raining = false; state.rainSize = 0; }, still ? 2500 : 5000);
+    }
+    $('vip-close').addEventListener('click', function () { $('vip-banner').hidden = true; });
+
+    // ---------- 데모 모드 (서버 없을 때) ----------
+    var DEMO_OTHERS = [
+      { name: '졸린 판다', count: 42 },
+      { name: '야근하는 수달', count: 31 },
+      { name: '춤추는 쿼카', count: 18 },
+      { name: '월요일의 펭귄', count: 7 },
+    ];
+    function startDemo() {
+      state.demo = true;
+      if (!state.name) {
+        var a = ['꿈꾸는', '배고픈', '수상한', '느긋한', '커피 마신'];
+        var b = ['하마', '카피바라', '미어캣', '알파카', '너구리'];
+        state.name = a[Math.floor(Math.random() * a.length)] + ' ' + b[Math.floor(Math.random() * b.length)];
+      }
+      var key = 'roo-demo-' + new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+      state.count = Number(LS.get(key)) || 0;
+      state.demoKey = key;
+      $('rank-mode').hidden = false;
+      $('vip-demo').hidden = false;
+      renderHall([
+        { rank: 1, name: '숨은 고수 카피바라', count: 128 },
+        { rank: 2, name: '점심 기다리는 오리', count: 96 },
+        { rank: 3, name: '반짝이는 문어', count: 54 },
+      ]);
+      renderDemo();
+    }
+    function renderDemo() {
+      LS.set(state.demoKey, String(state.count));
+      var all = DEMO_OTHERS.concat(state.count > 0 ? [{ name: state.name, count: state.count, me: true }] : []);
+      all.sort(function (x, y) { return y.count - x.count; });
+      var top = all.map(function (r, i) { return { rank: i + 1, name: r.name, count: r.count, me: r.me }; });
+      var mine = top.filter(function (r) { return r.me; })[0];
+      state.rank = mine ? mine.rank : null;
+      renderMe();
+      renderList(top, mine ? { name: mine.name, rank: mine.rank, count: mine.count } : null);
+      checkToday(state.rank);
+    }
+    $('vip-demo').addEventListener('click', function () { showVip(1, state.name, 128, false); });
+
+    // ---------- 연결 ----------
+    var btn = $('feed');
+    if (btn) btn.addEventListener('click', feed);
+    document.addEventListener('feed-roo', feed);
+    // 뒤로가기로 돌아온 경우(페이지가 캐시에서 복원되면 init이 다시 안 돌아요)에도 다시 확인
+    window.addEventListener('pageshow', function (e) {
+      if (!e.persisted) return;
+      state.prevRank = null;
+      checkToday(state.rank);
+    });
+    init();
+  })();
+</script>
+
+<!-- 랭킹 행은 스크립트가 만들어서 Astro의 범위 지정 CSS가 안 붙어요. 그래서 이 컴포넌트 스타일은 global로 둬요. -->
+<style is:global>
+  .rank-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .board, .hall {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    min-width: 0;
+  }
+  .board { border: 2px solid var(--ink); }
+  .board-head { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+  .board-sub { font-size: var(--step--1); color: var(--muted); }
+
+  .rank-list, .hall-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .rank-row, .hall-row {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--paper);
+  }
+  .rank-row.me { background: var(--peel-soft); outline: 2px solid var(--ink); }
+  .rank-no {
+    width: 2rem; height: 2rem;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    font-size: 0.875rem;
+    background: var(--card);
+    color: var(--ink);
+  }
+  .top1 .rank-no, .medal1 .medal-dot { background: #f5c518; color: #2b2417; }
+  .top2 .rank-no, .medal2 .medal-dot { background: #c9ccd3; color: #2b2417; }
+  .top3 .rank-no, .medal3 .medal-dot { background: #d08a4f; color: #2b2417; }
+  .rank-name { font-weight: 700; overflow-wrap: anywhere; display: flex; align-items: center; gap: 8px; }
+  .me-tag {
+    font-size: 0.6875rem;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .rank-count { font-size: 0.9375rem; }
+  .rank-gap { text-align: center; color: var(--muted); line-height: 1; }
+  .rank-empty { color: var(--muted); font-size: 0.9375rem; padding: 8px 0; }
+
+  .medal-dot {
+    width: 2rem; height: 2rem;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    font-size: 0.875rem;
+  }
+
+  .ghost-btn {
+    justify-self: start;
+    padding: 8px 14px;
+    background: transparent;
+    color: var(--ink);
+    border: 2px dashed var(--muted);
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+
+  .vip-banner {
+    position: fixed;
+    left: 50%;
+    top: calc(env(safe-area-inset-top, 0px) + 64px);
+    transform: translateX(-50%);
+    z-index: 30;
+    width: min(92vw, 560px);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--card);
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    box-shadow: 5px 5px 0 var(--crown, #f5c518);
+    animation: vip-in 0.5s cubic-bezier(.3, 1.5, .5, 1);
+  }
+  .vip-banner[hidden] { display: none; }
+  .vip-banner p { font-weight: 700; font-size: 0.9375rem; }
+  .vip-crown { width: 36px; height: auto; }
+  .vip-close {
+    padding: 6px 10px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+  }
+  @keyframes vip-in { from { transform: translate(-50%, -24px); opacity: 0; } }
+
+  .banana-rain { position: fixed; inset: 0; pointer-events: none; z-index: 25; overflow: hidden; }
+  .banana-rain .drop {
+    position: absolute;
+    top: -40px;
+    width: 30px;
+    height: 30px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M14 46c14 8 34 2 40-18 1-3 0-5-2-5-3 0-4 3-5 6-5 13-17 17-31 12-3-1-5 2-2 5z' fill='%23f5c518' stroke='%232b2417' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M50 23l3-9' stroke='%233f7d3a' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+    animation-name: fall;
+    animation-timing-function: cubic-bezier(.4, .1, .7, 1);
+    animation-fill-mode: forwards;
+  }
+  .banana-rain .drop.still { animation: none; transform: rotate(var(--spin, 0deg)); }
+  @keyframes fall {
+    to { transform: translateY(calc(100vh + 80px)) rotate(var(--spin, 180deg)); }
+  }
+
+  @media (max-width: 720px) {
+    .rank-grid { grid-template-columns: minmax(0, 1fr); }
+    /* 폰에선 상단 메뉴를 가리지 않게 아래쪽에 띄워요 */
+    .vip-banner {
+      top: auto;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+      animation-name: vip-in-up;
+    }
+    @keyframes vip-in-up { from { transform: translate(-50%, 24px); opacity: 0; } }
+  }
+</style>
