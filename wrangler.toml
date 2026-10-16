@@ -8,5 +8,5 @@ compatibility_date = "2025-06-01"
 binding = "DB"
 database_name = "banana-lab"
 # `npx wrangler d1 create banana-lab` 실행 후 나오는 database_id로 바꿔주세요.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "5c0720b8-dbdf-4545-9f6b-154e8c68fd6b"
 migrations_dir = "migrations"
