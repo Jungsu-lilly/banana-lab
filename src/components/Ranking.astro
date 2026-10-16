@@ -9,7 +9,7 @@
       <h3>오늘의 바나나 랭킹</h3>
       <span class="sample-badge" id="rank-mode" hidden>예시 랭킹</span>
     </div>
-    <p class="board-sub">자정(한국 시간)에 초기화돼요. 같은 개수면 먼저 도달한 사람이 위예요.</p>
+    <p class="board-sub">오늘 TOP3에 들면 더 큰 바나나 비가 내려요. 자정(한국 시간)에 초기화되고, 같은 개수면 먼저 도달한 사람이 위예요.</p>
     <ol class="rank-list" id="rank-list" aria-live="polite">
       <li class="rank-empty">불러오는 중…</li>
     </ol>
@@ -44,20 +44,26 @@
       del: function (k) { try { localStorage.removeItem(k); } catch (e) {} },
     };
     var $ = function (id) { return document.getElementById(id); };
+    // 배너와 바나나 비는 화면 전체에 떠야 해요. 랭킹을 접으면(부모가 숨겨지면) 같이 안 보이게 되니까
+    // 랭킹 영역 밖(body 바로 아래)으로 옮겨둬요.
+    document.body.appendChild($('vip-banner'));
+    document.body.appendChild($('banana-rain'));
     var state = { id: null, name: null, count: 0, rank: null, prevRank: null, pending: 0, demo: false, inflight: false, timer: null, lastRefresh: 0, raining: false };
 
     // 오늘 TOP3: 접속할 때, 그리고 TOP3 안에서 순위가 오를 때 바나나 비
     var TODAY = {
-      1: { rain: 36, line: '오늘 1위! 바나나 비를 내려드려요.' },
-      2: { rain: 20, line: '오늘 2위! 1위가 코앞이에요.' },
-      3: { rain: 12, line: '오늘 3위! 시상대에 올라왔어요.' },
+      1: { rain: 40, line: '오늘 1위! 제일 큰 바나나 비를 내려드려요.' },
+      2: { rain: 28, line: '오늘 2위! 1위가 코앞이에요.' },
+      3: { rain: 20, line: '오늘 3위! 시상대에 올라왔어요.' },
     };
 
     var VIP = {
-      1: { color: '#f5c518', title: '어제의 바나나왕', line: '왕이시여, 바나나를 받으소서.', rain: 36 },
-      2: { color: '#c9ccd3', title: '어제 2위', line: '은메달도 바나나는 금색이에요.', rain: 16 },
-      3: { color: '#d08a4f', title: '어제 3위', line: '동메달 축하드려요. 바나나 하나 더 드릴게요.', rain: 0 },
+      1: { color: '#f5c518', title: '어제의 바나나왕', line: '왕이시여, 바나나를 받으소서.', rain: 40 },
+      2: { color: '#c9ccd3', title: '어제 2위', line: '은메달도 바나나는 금색이에요.', rain: 28 },
+      3: { color: '#d08a4f', title: '어제 3위', line: '동메달 축하드려요. 바나나 하나 더 드릴게요.', rain: 20 },
     };
+    // 누구나 접속하면 한 번 내리는 환영 비. TOP3 비보다 작게 해서 "더 큰 비"를 노리게 해요.
+    var WELCOME = { rain: 12, line: '어서 오세요! 환영의 바나나 비예요. 오늘 TOP3에 들면 더 큰 비가 내려요.' };
 
     // ---------- 서버 통신 ----------
     function call(path, opts) {
@@ -97,6 +103,7 @@
           if (y && y <= 3) vipRained = showVip(y, data.me.name, data.me.yesterdayCount, true);
           if (vipRained) state.prevRank = data.me.rank; // 어제 기믹 비가 내렸으면 오늘 비는 다음 순위 상승 때
           applyServer(data);
+          welcome();
           setInterval(function () { if (!document.hidden) refresh(); }, 20000);
         })
         .catch(startDemo);
@@ -131,14 +138,24 @@
     }
     function celebrate(rank) {
       var t = TODAY[rank];
-      var bubble = $('hero-bubble');
-      if (bubble) {
-        bubble.textContent = t.line;
-        bubble.hidden = false;
-        clearTimeout(state.bubbleTimer);
-        state.bubbleTimer = setTimeout(function () { bubble.hidden = true; }, 4500);
-      }
+      showBubble(t.line, 4500);
       rain(t.rain);
+    }
+    // 접속할 때 한 번. 어제 TOP3 대접이나 오늘 TOP3 축하 비가 이미 예약됐으면 그쪽(더 큰 비)만 보여줘요.
+    function welcome() {
+      if (state.welcomed) return;
+      state.welcomed = true;
+      if (state.raining || state.waitingRain) return;
+      showBubble(WELCOME.line, 6000);
+      rain(WELCOME.rain);
+    }
+    function showBubble(text, ms) {
+      var bubble = $('hero-bubble');
+      if (!bubble) return;
+      bubble.textContent = text;
+      bubble.hidden = false;
+      clearTimeout(state.bubbleTimer);
+      state.bubbleTimer = setTimeout(function () { bubble.hidden = true; }, ms);
     }
 
     // ---------- 바나나 주기 ----------
@@ -328,6 +345,7 @@
         { rank: 3, name: '반짝이는 문어', count: 54 },
       ]);
       renderDemo();
+      welcome();
     }
     function renderDemo() {
       LS.set(state.demoKey, String(state.count));
