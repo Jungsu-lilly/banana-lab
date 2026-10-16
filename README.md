@@ -1,5 +1,8 @@
 # 캥거루 대리의 바나나 연구소
 
+**주소: https://banana-lab.pages.dev/**
+<br>
+
 바나나 시세, 원산지, 메이커, TMI를 보여주는 정적 사이트예요. Astro로 만들고 Cloudflare Pages에 무료로 배포해요.
 
 데이터는 GitHub Actions가 매일 공공데이터로 갱신해요. 처음 받았을 땐 예시 데이터가 들어 있고, 첫 수집 때 실제 값으로 바뀌어요.
